@@ -1,0 +1,74 @@
+! pip install q tensorflow==2.1
+! pip install q keras==2.3.1
+! pip install git+https://github.com/qubvel/segmentation_models
+
+from keras.preprocessing.image import ImageDataGenerator
+from segmentation_models import Unet
+from segmentation_models import get_preprocessing
+from segmentation_models.losses import bce_jaccard_loss
+from segmentation_models.metrics import iou_score
+
+BACKBONE = 'resnet34'
+preprocess_input = get_preprocessing(BACKBONE)
+
+x_train_data_dir = '/content/drive/MyDrive/Carvana/train'
+y_train_data_dir = '/content/drive/MyDrive/Carvana/train_masks'
+x_val_data_dir = '/content/drive/MyDrive/Carvana/val'
+y_val_data_dir = '/content/drive/MyDrive/Carvana/val_masks'
+
+#input_shape = (1024, 1024, 3)
+batch_size = 4
+
+data_gen_args = dict(rotation_range=90,
+                     width_shift_range=0.1,
+                     height_shift_range=0.1)
+image_datagen = ImageDataGenerator(**data_gen_args)
+mask_datagen = ImageDataGenerator(**data_gen_args)
+
+seed = 1
+
+image_generator = image_datagen.flow_from_directory(
+    x_train_data_dir,
+    # target_size = (input_shape[0], input_shape[1]),
+    batch_size = batch_size,
+    class_mode=None,
+    seed=seed)
+
+    
+mask_generator = mask_datagen.flow_from_directory(
+    y_train_data_dir,
+    # target_size = (input_shape[0], input_shape[1]),
+    batch_size = batch_size,
+    color_mode = 'grayscale',
+    class_mode=None,
+    seed=seed)
+
+image_generator_val = image_datagen.flow_from_directory(
+    x_val_data_dir,
+    # target_size = (input_shape[0], input_shape[1]),
+    batch_size = batch_size,
+    class_mode=None,
+    seed=seed)
+
+mask_generator_val = mask_datagen.flow_from_directory(
+    y_val_data_dir,
+    # target_size = (input_shape[0], input_shape[1]),
+    batch_size = batch_size,
+    color_mode = 'grayscale',
+    class_mode=None,
+    seed=seed)
+
+# combine generators into one which yields image and masks
+train_generator = zip(image_generator, mask_generator)
+val_generator = zip(image_generator_val, mask_generator_val)
+
+model = Unet(BACKBONE, encoder_weights='imagenet', encoder_freeze = True)
+model.compile('Adam', loss=bce_jaccard_loss, metrics=[iou_score])
+
+model.fit_generator(
+    train_generator,
+    epochs=10,
+    steps_per_epoch = 16,
+    validation_data=val_generator,
+    validation_steps=8
+)
