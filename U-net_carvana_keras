@@ -24,6 +24,8 @@ data_gen_args = dict(rotation_range=90,
                      height_shift_range=0.1)
 image_datagen = ImageDataGenerator(**data_gen_args)
 mask_datagen = ImageDataGenerator(**data_gen_args)
+image_datagen_val = ImageDataGenerator(**data_gen_args)
+mask_datagen_val = ImageDataGenerator(**data_gen_args)
 
 seed = 1
 
